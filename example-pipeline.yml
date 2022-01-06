@@ -30,8 +30,7 @@ steps:
     stage: "dependency_evaluation"
     commands: 
       - "git diff --name-only HEAD~1 HEAD"
-      - "git diff --name-only HEAD~1 HEAD | grep dependency/Dockerfile"
-      - "echo $?"
+      - "git diff --name-only HEAD~1 HEAD | grep dependency/dependencies.list"
     when:
       steps:
       - name: clone
