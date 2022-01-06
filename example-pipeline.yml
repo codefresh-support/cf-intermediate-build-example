@@ -1,0 +1,74 @@
+# More examples of Codefresh YAML can be found at
+# https://codefresh.io/docs/docs/yaml-examples/examples/
+
+version: "1.0"
+mode: "parallel"
+# Stages can help you organize your steps in stages
+stages:
+  - "clone"
+  - "dependency_evaluation"
+  - "dependency_build"
+  - "build"
+  - "test"
+
+steps:
+  clone:
+    title: "Cloning repository"
+    type: "git-clone"
+    repo: "paul-codefresh/cf-intermediate-build-example"
+    # CF_BRANCH value is auto set when pipeline is triggered
+    # Learn more at codefresh.io/docs/docs/codefresh-yaml/variables/
+    revision: "${{CF_BRANCH}}"
+    git: "github"
+    stage: "clone"
+    
+  dependency_evaluation:
+    title: "Checking if depepdencies have changed"
+    type: "freestyle"
+    image: "alpine/git:latest"
+    working_directory: "${{clone}}"
+    stage: "dependency_evaluation"
+    commands: 
+      - "git diff --name-only HEAD~1 HEAD"
+      - "git diff --name-only HEAD~1 HEAD | grep dependency/Dockerfile"
+      - "echo $?"
+    when:
+      steps:
+      - name: clone
+        on: 
+          - success
+    
+  dependency_build:
+    title: "Updating dependency container"
+    type: "build"
+    image_name: "intermediatecontainerdemo-dependency"
+    tag: latest
+    no_cache: true
+    no_cf_cache: true
+    working_directory: "${{clone}}/dependency"
+    stage: "dependency_build"
+    when:
+      steps:
+      - name: dependency_evaluation
+        on: 
+          - success
+
+  test:
+    title: "Showing contents of dependency container"
+    type: "freestyle" # Run any command
+    image: "ghcr.io/paul-codefresh/intermediatecontainerdemo-dependency:latest" # The image in which command will be executed
+    working_directory: "${{clone}}" # Running command where code cloned
+    commands:
+      - "ls -lah /project"
+    stage: "test"
+    when:
+      steps:
+        any:
+        - name: dependency_build
+          on: 
+            - success
+        - name: dependency_evaluation
+          on:
+            - failure
+
+
